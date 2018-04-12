@@ -8,19 +8,30 @@ where 'c' compresses inputfile to outputfile and
 'd' decompresses inputfile to outputfile.
 
 Huffman class:
-.data : information to code/decode. 
+
+.data : information to code/decode.
+
 .header : coded Huffman tree
+
 .footer : byte containing good bits of final data byte
+
 .bitstream: for reading/writing to file
+
 .asciitocode: coder dictionary
+
 .codetoascii: decoder dictionary
+
 .bt: Huffman object (binary tree) for coding/decoding
 
 Compressed file structure:
+
   bytes 1 - 2: bytes storing value x, the size in bytes of
-               stored Huffman tree
+  stored Huffman tree
+  
   bytes 3 - x: Huffman tree
+  
   bytes x+1 - len(file)-1 : data
+  
   byte len(file): a single byte indicating how many bits of the previous
                   byte should be read
 
@@ -44,6 +55,7 @@ Associated functions:
 	Returns a dictionary of character frequencies.
 
 Things to improve:
+
   The BitString library is not very fast, so we should probably try to 
   minimize or eliminate its use.
   
