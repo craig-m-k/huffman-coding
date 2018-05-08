@@ -11,17 +11,17 @@ class Heap(object):
         return len(self.queue)
 
     def perc_up(self, i):
-        p = (i+1)/2-1
-        if self.h_type == 'min':
+        p = (i+1)//2-1
+        if self.h_type == 'max':
             while i > 0 and self.queue[p] > self.queue[i]:
                 self.queue[i], self.queue[p] = self.queue[p], self.queue[i]
                 i = p
-                p = (i+1)/2-1
+                p = (i+1)//2-1
         else:
             while i > 0 and self.queue[p] < self.queue[i]:
                 self.queue[i], self.queue[p] = self.queue[p], self.queue[i]
                 i = p
-                p = (i+1)/2-1
+                p = (i+1)//2-1
                     
     def insert(self, key):
         self.queue.append(key)
@@ -33,7 +33,7 @@ class Heap(object):
         self.queue[len_h], self.queue[0] = self.queue[0], self.queue[len_h]
         popped_key = self.queue.pop()
         self.heapsize -= 1
-        if self.h_type == 'min':
+        if self.h_type == 'max':
             if self.heapsize > 1 and self.queue[0] < self.queue[1]:
                 self.queue[0], self.queue[1] = self.queue[1], self.queue[0]
             self.min_heapify(1)
@@ -77,10 +77,11 @@ class Heap(object):
 
     def build_max_heap(self):
         n = self.heapsize
-        for i in range(n/2+1, 0, -1):
+        for i in range(n//2+1, 0, -1):
             self.max_heapify(i)
+            
     def build_min_heap(self):
         n = self.heapsize
-        for i in range(n/2+1, 0, -1):
+        for i in range(n//2+1, 0, -1):
             self.min_heapify(i)
         
