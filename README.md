@@ -15,7 +15,7 @@ where 'c' compresses inputfile to outputfile and
 
 * .header : coded Huffman tree
 
-* .footer : byte containing good bits of final data byte
+* .footer : byte containing bit alignment of final data byte
 
 * .bitstream: for reading/writing to file
 
@@ -28,18 +28,18 @@ where 'c' compresses inputfile to outputfile and
 *  bytes 1 - 2: bytes storing value x, the size in bytes of
   stored Huffman tree
   
-*  bytes 3 - x: Huffman tree
+*  bytes 3 - x+3: Huffman tree
   
-*  bytes x+1 - len(file)-1 : data
+*  bytes x+4 - len(file)-1 : data
   
 *  byte len(file): a single byte indicating how many bits of the
    previous byte should be read
 
 ### Associated functions:
-*  code(): Creates a dictionary for ascii-to-code or code-to-ascii.
+*  code(): Creates a dictionary for ascii-to-code
 
 *  string_to_tree():
-	Uses a heap to create the Huffman tree from the input file.
+	Uses a heap in heapify.py to create the Huffman tree from the input file.
 
 *  serialize_tree(): Creates a string representation of the Huffman tree.
 
