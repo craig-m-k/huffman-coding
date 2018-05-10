@@ -19,9 +19,7 @@ where 'c' compresses inputfile to outputfile and
 
 * .bitstream: for reading/writing to file
 
-* .asciitocode: coder dictionary
-
-* .codetoascii: decoder dictionary
+* .asciitocode: code dictionary
 
 * .bt: Huffman object (binary tree) for coding/decoding
 
@@ -40,8 +38,6 @@ where 'c' compresses inputfile to outputfile and
 ### Associated functions:
 *  code(): Creates a dictionary for ascii-to-code or code-to-ascii.
 
-* decode(): Passes the data stream through the code-to-ascii dictionary.
-
 *  string_to_tree():
 	Uses a heap to create the Huffman tree from the input file.
 
@@ -51,8 +47,7 @@ where 'c' compresses inputfile to outputfile and
 
 *  get_freq(string): Returns a dictionary of character frequencies.
 
-### Things to improve:
+### Testing:
 
-  The BitString library is not very fast, so we should probably try to 
-  minimize or eliminate its use.
+  test_hcode.py tests the implementation as follows: random file -> compress -> decompress -> diff against random file
   
