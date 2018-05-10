@@ -1,28 +1,12 @@
 from heapify import *
-import bitstring
-from collections import deque
-import binascii
+from bt import *
+from bitarray import bitarray
 import os
 from sys import argv
 
 script, action, inputfile, outputfile = argv
 
 
-class Node(object):
-    def __init__(self, parent, left, right, letter, key):
-        self.parent = parent
-        self.letter = letter
-        self.left = left
-        self.right = right
-        self.key = key
-
-        
-class BT(object):
-    def __init__(self):
-        self.root = None
-        self.leaves = []
-
-        
 class Huffman(object):
     def __init__(self):
         self.data = None
@@ -35,11 +19,11 @@ class Huffman(object):
 
     def string_to_tree(self):
         # Converts self.data to Huffman BT
-        freq = self.get_freq(self.data)
+        freq_dict = self.get_freq(self.data)
         heap = Heap(h_type='max')
-        for x in freq:
-            n = Node(None, None, None, x[0], x[1])
-            heap.insert((x[1], n))
+        for key in freq_dict.keys():
+            n = Node(None, None, None, key, freq_dict[key])
+            heap.insert((freq_dict[key], n))
             self.bt.leaves.append(n)
         while len(heap) > 1:
             x = heap.pop()
@@ -71,11 +55,11 @@ class Huffman(object):
         # Creates a Huffman tree from header
         while True:
             try:
-                y = next(header)
+                y = str(int(next(header)))
                 if y == '1':
                     buf = ''
                     for _ in xrange(8):
-                        buf += next(header)
+                        buf += str(int(next(header)))
                     letter = chr(int(buf, 2))
                     n = Node(prev, None, None, letter, 0)
                     self.bt.leaves.append(n)
@@ -91,49 +75,25 @@ class Huffman(object):
                 return self.bt.root
 
     def code(self):
-        # Fill the ascii-to-code or code-to-ascii dictionary.
+        # Fill the ascii-to-code dictionary.
         for x in self.bt.leaves:
             letter = x.letter
-            s = deque([])
+            s, ht = 0, 0
             n = x
             while n:
                 if n.parent:
                     if n == n.parent.right:
-                        s.appendleft('1')
-                    else:
-                        s.appendleft('0')
+                        s |= (1 << ht)
                 n = n.parent
-            s = ''.join(c for c in s)
-            if action == 'c':
-                s = '0b' + s
-                self.asciitocode[str(ord(letter))] = s
-            else:
-                self.codetoascii[s] = ord(letter)
+                ht += 1
+            self.asciitocode[letter] = bitarray(bin(s)[2:].zfill(ht-1))
         if action == 'c':
-            fmt = ''
+            fmt = []
             for c in self.data:
-                fmt += str(ord(c)) + ','
-            self.bitstream = bitstring.pack(fmt, **self.asciitocode)
-        
-    def decode(self):
-        # Passes the binary data stream through the code-to-ascii dictionary.
-        output = ''
-        j = 0
-        buf = ''
-        read_chunk_size = 8
-        while j < len(self.bitstream):
-            byte = '0x' + self.bitstream[j:j+2]
-            bits = bin(int(byte, 16))[2:].zfill(8)
-            if j >= len(self.bitstream) - 2:
-                read_chunk_size = self.footer
-            for i in xrange(read_chunk_size):
-                buf += bits[i]
-                if buf in self.codetoascii:
-                    output += str(chr(self.codetoascii[buf]))
-                    buf = ''
-            j += 2
-        return output
-    
+                fmt.append(c)
+            self.bitstream = bitarray()
+            self.bitstream.encode(self.asciitocode, fmt)
+                     
     def get_freq(self, string):
         # A character frequency counter to create the Huffman tree
         freq_dict = {}
@@ -142,66 +102,84 @@ class Huffman(object):
                 freq_dict[c] += 1
             except (KeyError):
                 freq_dict[c] = 1
-        freq = []
-        for x in freq_dict.keys():
-            freq.append((x, freq_dict[x]))
-        return freq
+        return freq_dict
 
     
 def main():
     H = Huffman()
+    
+    # Compression
     if action == 'c':
         with open(inputfile, 'rb') as fi:
             H.data = fi.read()
         H.string_to_tree()
         H.code()
 
-        # determine byte alignment and create footer
+        # Determine byte alignment and create footer
         b_align = len(H.bitstream) % 8
         if b_align == 0:
-            footer = bitstring.BitArray('0b00001000')
+            footer = bitarray('00001000')
         else:
-            footer = bitstring.BitArray('0b' + str(bin(b_align)[2:]).zfill(8))
+            footer = bitarray(str(bin(b_align)[2:]).zfill(8))
 
-        # pack the end the of bitstream
-        while len(H.bitstream.bin) % 8 != 0:
-            H.bitstream.bin += '0'
+        # Pack the end the of bitstream
+        while len(H.bitstream) % 8 != 0:
+            H.bitstream += '0'
 
-        # create the header
+        # Create the header
         header = H.serialize_tree(H.bt.root)
         header = ''.join(str(z) for z in header)
         while len(header) % 8 != 0:
             header += '0'
         header_byte_len = str(bin(len(header)/8))[2:].zfill(16)
-        header = '0b' + header_byte_len + header
+        header = bitarray(header_byte_len + header)
 
-        # put header byte len, header, data, and footer together and write file
-        H.bitstream = bitstring.BitArray(header) + H.bitstream + footer
+        # Put header byte len, header, data, and footer together and write file
+        H.bitstream = header + H.bitstream + footer
         with open(outputfile, 'wb') as of:
             H.bitstream.tofile(of)
+            
+    # Decompression
     elif action == 'd':
         with open(inputfile, "rb") as fi:
-            hexdata = binascii.hexlify(fi.read())
-            
-        # read header and footer
-        header_len = int(hexdata[:4], 16)
-        header = '0x'+ hexdata[4:4+2*header_len]
-        H.header = bin(int(header, 16))[2:].zfill(header_len*8)
-        H.footer = int('0x'+hexdata[len(hexdata)-2:], 16)
+            header_len = ''
+            for _ in xrange(2):
+                byte = fi.read(1)
+                header_len += bin(ord(byte))[2:].zfill(8)
+            header_len = int(header_len,2)
+            header = fi.read(header_len)
+            data_start_byte = fi.tell()
+            fi.seek(-1,2)
+            data_end_byte = fi.tell()-1
+            H.footer = ord(fi.read(1))
+            fi.seek(data_start_byte)
+            data = fi.read(data_end_byte-data_start_byte+1)
 
-        # deserialize Huffman tree, decode, write file
-        H.bitstream = hexdata[4+2*header_len:len(hexdata)-2]
+        # Apportion the chunks read from the file
+        H.header = bitarray()
+        for byte in header:
+            H.header += bitarray(bin(ord(byte))[2:].zfill(8))
+        H.bitstream = bitarray()
+        for byte in data:
+            H.bitstream += bitarray(bin(ord(byte))[2:].zfill(8))
+
+        # End the bitstream according to footer
+        H.bitstream = H.bitstream[:(len(H.bitstream)-(8-H.footer))]
+       
+        # Deserialize Huffman tree, decode, write file
         H.bt.root = H.deserialize_tree(iter(H.header))
         H.code()
-        H.data = H.decode()
+        decoded = H.bitstream.decode(H.asciitocode)
+        output_string = ''.join(c for c in decoded)
         with open(outputfile, 'wb') as of:
-            of.write(H.data)
+            of.write(output_string)
 
         part = float(os.path.getsize(outputfile))/os.path.getsize(inputfile)
-        print "File compression ratio: %f:1" % part
+        print("File compression ratio: %f:1" % part)
     else:
         raise Exception("Use: python hcode.py <c/d> <inputfile> <outputfile>")
 
-if __name__=="__main__":
+    
+if __name__ == "__main__":
     main()
     
